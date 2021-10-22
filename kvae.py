@@ -3,58 +3,8 @@ import numpy as np
 import os
 from tqdm import tqdm
 import pickle
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 
-def export_vid(model, dataloader, state_dict=None, epoch=0, j=0, both=True, ret=False):
-    t = torch.Tensor(dataloader.dataset[j:j+64])
-    d = (32,32)
-    if state_dict:
-        x,x_hat = model.eval(t, x_dims=d, state_dict=state_dict)
-    else:
-        x,x_hat = model.eval(t, x_dims=d)
-
-    print(x.shape, x_hat.shape)
-    fig = plt.figure()
-    if x.shape[-1] > 1:
-        frames=[]
-        for i in range(x.shape[-1]):
-            x_mat = np.vstack([np.hstack([x[sample,:,:,i], x_hat[sample,:,:,i]]) for sample in (0,1)])
-            frames.append([plt.imshow(x_mat if both else x_hat[0,:,:,i], cmap='gray', animated=True)])
-        ani = animation.ArtistAnimation(fig, frames, interval=50, blit=True, repeat_delay=1000)
-        ani.save(f"results/test_x_{epoch}.mp4")
-    else:
-        x_mat = np.vstack([np.hstack([x[0,:,:,0], x_hat[0,:,:,0]]), np.hstack([x[1,:,:,0], x_hat[1,:,:,0]])])
-        plt.imshow(x_mat, cmap='gray')
-        plt.savefig(f"results/test_x_{epoch}.jpg", bbox_inches='tight')
-    plt.close()
-    if ret: return x_hat
-
-def plot_loss(train, val, title, dir):
-    plt.clf()
-    fig = plt.figure(figsize=(8,6))
-    plt.rcParams['font.size'] = 12
-    plt.plot(train, label='training loss')
-    plt.plot(val, label='validation loss')
-    plt.legend(fontsize=16, title="loss_"+title, title_fontsize=20)
-    plt.xlabel('epochs', fontdict={'size':16})
-    plt.ylabel('loss', fontdict={'size':16})
-    plt.savefig(os.path.join(dir, f'loss_{title}.png'))
-
-def load_bouncing_ball(datafolder, dataname, eps=1e-6, static=False, singular=False):
-    def load_images(path):
-        npzfile = np.load(path)
-        pics = (npzfile['images'].astype(np.float32) > 0).astype('float32') + eps
-        if static:
-            pics = np.repeat(pics[:,10,:,:][:,None,:,:], pics.shape[1], axis=1)
-        if singular:
-            pics = pics[:, 0, :, :][:, None, :, :]
-        return pics
-    train_images = load_images(f"{datafolder}/{dataname}.npz") #sequences, timesteps, d1, d2 = images.shape
-    test_images  = load_images(f"{datafolder}/{dataname}_test.npz")
-    return np.moveaxis(train_images, 1, -1), np.moveaxis(test_images, 1, -1)
+from auxiliary import plot_loss, export_vid
 
 class KVAE:
     def __init__(self, model, lr, lr_tot, epochs, batch_size, early_stop_patience, 
