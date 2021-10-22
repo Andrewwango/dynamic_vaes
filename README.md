@@ -20,4 +20,12 @@
 - `circle.npz`, `circle_test.npz` - train and val data
 - `elliptical.npz`, `elliptical_test.npz` - train and val data
 
+`/pytorch_cvae_test/`
+
+- implementations of classical static convolutional VAEs online tutorials
+
+`/kvae_original_paper/`
+
+- core components of original implementation of KVAE model by Fraccaro et al.
+
 ## Introduction
