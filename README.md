@@ -8,6 +8,7 @@
 - `kvae.py` - KVAE class defining training and eval
 - `kvae_model.py` - class defining KVAE model structure and defines forward pass
 - `test.ipynb` - visualising latent space, parameters etc. from results
+- `auxiliary.py` - data and vis functions
 
 `/bouncing_ball_data/`
 
