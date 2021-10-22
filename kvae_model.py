@@ -44,10 +44,6 @@ class KVAEModel(nn.Module):
         self.dim_RNN_alpha = dim_RNN_alpha
         self.num_RNN_alpha = num_RNN_alpha
 
-        #not necessary...
-        self.x_var = torch.tensor([0.1])
-        self.x_logvar = torch.log(self.x_var)
-
     def build(self):
 
         #############
@@ -306,33 +302,7 @@ class KVAEModel(nn.Module):
         alpha = self.mlp_alpha(alpha) # (seq_len, bs, K), softmax on K dimension
         return alpha
 
-    def forward_debug(self, x, compute_loss=False):
-        if self.x_2d: x = torch.flatten(x, -3, -2)
-
-        if len(x.shape) == 2:
-            x = x.unsqueeze(0)
-        x = x.permute(-1, 0, 1)
-    
-        seq_len = x.shape[0]
-        batch_size = x.shape[1]
-
-        # main part
-        a, a_mean, a_logvar = self.encode(x)
-        batch_size = a.shape[1]
-        u_0 = torch.zeros(1, batch_size, self.u_dim).to(self.device)
-        u = torch.cat((u_0, a[:-1]), 0)
-        a_gen, mu_smooth, Sigma_smooth, A_mix, B_mix, C_mix = self.kf_smoother(a, u, self.K, self.A, self.B, self.C, self.R, self.Q)
-
-        y = self.decode(a_gen)
-        
-        # output of NN:    (seq_len, batch_size, dim)
-        # output of model: (batch_size, dim, seq_len) or (dim, seq_len)
-        
-        self.y = y.permute(1,-1,0)#.squeeze()
-
-        return x.to('cpu').detach().numpy(), self.y.to('cpu').detach().numpy(), a.to('cpu').detach().numpy(), a_gen.to('cpu').detach().numpy(), mu_smooth.to('cpu').detach().numpy()
-
-    def forward_normal(self, x, compute_loss=False):
+    def forward(self, x, compute_loss=False):
         if self.x_2d: x = torch.flatten(x, -3, -2)
 
         # train input: (batch_size, x_dim, seq_len)
@@ -373,66 +343,36 @@ class KVAEModel(nn.Module):
 
         return self.y
 
-    def forward(self, x, compute_loss=False):
-        if self.x_2d: x = torch.flatten(x, -3, -2)       
+    def forward_debug(self, x, compute_loss=False):
+        if self.x_2d: x = torch.flatten(x, -3, -2)
+
         if len(x.shape) == 2:
             x = x.unsqueeze(0)
         x = x.permute(-1, 0, 1)
+    
         seq_len = x.shape[0]
         batch_size = x.shape[1]
+
         # main part
-        a_gen, a_mean, a_logvar = self.encode(x)
-        batch_size = a_gen.shape[1]
+        a, a_mean, a_logvar = self.encode(x)
+        batch_size = a.shape[1]
+        u_0 = torch.zeros(1, batch_size, self.u_dim).to(self.device)
+        u = torch.cat((u_0, a[:-1]), 0)
+        a_gen, mu_smooth, Sigma_smooth, A_mix, B_mix, C_mix = self.kf_smoother(a, u, self.K, self.A, self.B, self.C, self.R, self.Q)
+
         y = self.decode(a_gen)
-        #print(x.shape, y.shape)
-        # calculate loss
-        if compute_loss:
-            loss = self.get_loss_vae(x, y, a_mean, a_logvar, batch_size, seq_len, beta=1)
-            #print(loss)
-            self.loss = (loss, loss, torch.tensor(0))
         
+        # output of NN:    (seq_len, batch_size, dim)
+        # output of model: (batch_size, dim, seq_len) or (dim, seq_len)
         
         self.y = y.permute(1,-1,0)#.squeeze()
 
-        return self.y
+        return x.to('cpu').detach().numpy(), self.y.to('cpu').detach().numpy(), a.to('cpu').detach().numpy(), a_gen.to('cpu').detach().numpy(), mu_smooth.to('cpu').detach().numpy()
 
-    def get_loss_vae(self, x, y, a_mean, a_logvar, batch_size, seq_len, beta=1):
-        #loss_recon_func = nn.BCELoss(reduction='sum')
-        #loss_recon = loss_recon_func(y, x)
-
-        loss_recon = torch.sum( x/(y+1e-15) - torch.log(x/(y+1e-15)) - 1)
-        loss_KLD = -0.5 * torch.sum(a_logvar -  a_logvar.exp() - a_mean.pow(2))
-
-        loss_recon = loss_recon / (batch_size * seq_len)
-        loss_KLD = loss_KLD / (batch_size * seq_len)
-        loss_tot = loss_recon + beta * loss_KLD
-
-        return loss_tot
-
-    def log_bernoulli(self, x, p, eps=1e-6):
-        p = torch.clip(p, min=eps, max=1.0 - eps)
-        return x * torch.log(p) + (1 - x) * torch.log(1 - p)
-
-    def new_vae_loss(self, x, y, a_mean, a_logvar):
-        # TODO: implement this according to tutorial and test on static videos
-        bce_loss = nn.BCELoss(reduction='sum')(y, x)
-        BCE = bce_loss 
-        KLD = -0.5 * torch.sum(1 + a_logvar - a_mean.pow(2) - a_logvar.exp())
-        return BCE + KLD
 
     def get_loss(self, x, y, u, a, a_mean, a_logvar, mu_smooth, Sigma_smooth,
              A, B, C, scale_reconstruction=1, seq_len=150, batch_size=32):
-        
-        vae_loss = self.get_loss_vae(x, y, a_mean, a_logvar, batch_size, seq_len, beta=1)
-        #print(vae_loss)
-        # log p_{\theta}(x | a_hat), complex Gaussian
-        #eps = 1e-6
-        #y_eps = torch.maximum(torch.abs(y), torch.tensor([eps])) * torch.sign(y)
-        #log_px_given_a = - torch.log(y_eps) - x/y_eps
-        #log_px_given_a = self.log_bernoulli(x, y)
-        #log_px_given_a = - y - torch.pow(x, 2)/torch.exp(y)
-        #log_px_given_a = - 0.5 * self.x_logvar - torch.pow(x - y, 2) / (2 * self.x_var)
-        
+               
         #DVAE (IS)
         log_px_given_a = - torch.sum( x/(y+1e-15) - torch.log(x/(y+1e-15)) - 1) / (batch_size * seq_len)
         #tutorial + KVAE
@@ -483,7 +423,6 @@ class KVAEModel(nn.Module):
         log_pz_given_au = torch.sum(log_pz_given_au) /  (batch_size * seq_len)
 
         # Loss
-        loss_vae = vae_loss#- scale_reconstruction * log_px_given_a + log_qa_given_x #last operator was +!!!
         loss_lgssm =  - log_paz_given_u + log_pz_given_au
         loss_tot = loss_vae + loss_lgssm
 
@@ -506,32 +445,3 @@ class KVAEModel(nn.Module):
             """
 
         return loss_tot, loss_vae, loss_lgssm
-
-
-    def get_info(self):
-        
-        info = []
-        info.append("----- VAE -----")
-        for layer in self.mlp_x_a:
-            info.append(str(layer))
-        info.append(self.inf_mean)
-        info.append(self.inf_logvar)
-        for layer in self.mlp_a_x:
-            info.append(str(layer))
-        info.append(self.gen_logvar)
-
-        info.append("----- Dynamics -----")
-        info.append(self.rnn_alpha)
-        info.append(self.mlp_alpha)
-
-        info.append("----- LGSSM -----")
-        info.append("A dimension: {}".format(str(self.A.shape)))
-        info.append("B dimension: {}".format(str(self.B.shape)))
-        info.append("C dimension: {}".format(str(self.C.shape)))
-        info.append("transition noise level: {}".format(self.noise_transition))
-        info.append("emission noise level: {}".format(self.noise_emission))
-        info.append("scale for initial B and C: {}".format(self.init_kf_mat))
-        info.append("scale for initial covariance: {}".format(self.init_cov))
-
-
-        return info

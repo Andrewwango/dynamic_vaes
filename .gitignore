@@ -1,6 +1,4 @@
 *results/
-bouncing_ball_data/
-nonlinear_ball_data/
 *.npz
 # Byte-compiled / optimized / DLL files
 __pycache__/

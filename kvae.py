@@ -21,7 +21,7 @@ def export_vid(model, dataloader, state_dict=None, epoch=0, j=0, both=True, ret=
     if x.shape[-1] > 1:
         frames=[]
         for i in range(x.shape[-1]):
-            x_mat = np.vstack([np.hstack([x[0,:,:,i], x_hat[0,:,:,i]]), np.hstack([x[1,:,:,i], x_hat[1,:,:,i]])])
+            x_mat = np.vstack([np.hstack([x[sample,:,:,i], x_hat[sample,:,:,i]]) for sample in (0,1)])
             frames.append([plt.imshow(x_mat if both else x_hat[0,:,:,i], cmap='gray', animated=True)])
         ani = animation.ArtistAnimation(fig, frames, interval=50, blit=True, repeat_delay=1000)
         ani.save(f"results/test_x_{epoch}.mp4")
