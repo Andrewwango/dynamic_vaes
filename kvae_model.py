@@ -174,7 +174,7 @@ class KVAEModel(nn.Module):
 
     def decode(self, a):
         seq_len, batch_size, a_len = a.shape
-        a_x = self.mlp_a_x(a.view(seq_len*batch_size, a_len))
+        a_x = self.mlp_a_x(a.reshape(seq_len*batch_size, a_len))
         log_y = self.gen_logvar(a_x).view(seq_len, batch_size, -1)
         #y = torch.exp(log_y)
         return log_y

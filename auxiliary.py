@@ -39,6 +39,15 @@ def plot_loss(train, val, title, dir):
     plt.ylabel('loss', fontdict={'size':16})
     plt.savefig(os.path.join(dir, f'loss_{title}.png'))
 
+def save_frames(seq, name="test.mp4"):
+    fig = plt.figure()
+    frames=[]
+    for i in range(seq.shape[-1]):
+        frames.append([plt.imshow(np.vstack([seq[b, :, :, i] for b in range(seq.shape[0])]), cmap='gray', animated=True)])
+    ani = ArtistAnimation(fig, frames, interval=50, blit=True, repeat_delay=1000)
+    ani.save(name)
+    plt.close()
+
 def export_vid(model, dataloader, state_dict=None, epoch=0, j=0, both=True, ret=False):
     """[summary]
 
