@@ -445,3 +445,56 @@ class KVAEModel(nn.Module):
             """
 
         return loss_tot, loss_vae, loss_lgssm
+
+    def generate(self, z_temp, N=200):
+        #z_temp list seq_len, batch_size, z_dim
+        z_temp = torch.tensor(z_temp).detach()
+        seq_len, batch_size, _ = z_temp.shape
+        z_temp = z_temp.permute(1,-1,0)
+
+        z_samples = torch.zeros((batch_size, self.z_dim, seq_len+N))
+        y_samples = torch.zeros((batch_size, self.x_dim, seq_len+N))
+        a_samples = torch.zeros((batch_size, self.a_dim, seq_len+N))
+
+        z = z_temp[:, :, -2:-1] #batch_size, z_dim, 1
+        K = 1
+        A_flatten = self.A.view(K, self.z_dim*self.z_dim) # (K, z_dim*z_dim) 
+        B_flatten = self.B.view(K, self.z_dim*self.u_dim) # (K, z_dim*u_dim) 
+        C_flatten = self.C.view(K, self.a_dim*self.z_dim) # (K, a_dim*z_dim) 
+
+        A_mix = A_flatten.view(1, self.z_dim, self.z_dim)
+        B_mix = B_flatten.view(1, self.z_dim, self.u_dim)
+        C_mix = C_flatten.view(1, self.a_dim, self.z_dim)
+
+        A_mix = A_mix.repeat((batch_size, 1, 1))
+        B_mix = B_mix.repeat((batch_size, 1, 1))
+        C_mix = C_mix.repeat((batch_size, 1, 1))
+
+        def z_to_y(model, z, C): #z in (batch_size, z_dim, seq_len)
+            model.eval()
+            _, _, seq_len = z.shape
+            #print(C.shape, z.shape)
+
+            a_gen = C.bmm(z)
+            a_gen = a_gen.permute(-1, 0, 1)
+            #print(a_gen.shape)
+            with torch.no_grad():
+                y = model.decode(a_gen).permute(1,-1,0) #(batch_size, dim, seq_len)
+            return a_gen.permute(1,-1,0), y
+
+        z_samples[:, :, :seq_len] = z_temp
+        a_gen, y = z_to_y(self, z_temp, C_mix)
+        a_samples[:, :, :seq_len] = a_gen
+        y_samples[:, :, :seq_len] = y
+
+        for i in range(seq_len, seq_len+N):
+            a_gen, y = z_to_y(self, z, C_mix)
+            z = A_mix.bmm(z)
+            
+            z_samples[:, :, i:i+1] = z
+            a_samples[:, :, i:i+1] = a_gen
+            y_samples[:, :, i:i+1] = y
+
+        y_samples = y_samples.view(batch_size, 32, 32, seq_len+N)
+
+        return z_samples, y_samples
