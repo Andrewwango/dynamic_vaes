@@ -7,7 +7,7 @@ from auxiliary import load_bouncing_ball
 if __name__ == '__main__':
     print("create dataloaders")
     batch_size = 64
-    train_dataset, val_dataset =  load_bouncing_ball("nonlinear_ball_data", "elliptical")
+    train_dataset, val_dataset =  load_bouncing_ball("nonlinear_ball_data", "elliptical", binary=False)
     train_dataset = train_dataset[np.random.choice(5000, 2560)]
     #val_dataset = val_dataset[np.random.choice(1000, 512)]
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle = True, num_workers = 2)

@@ -6,7 +6,7 @@ from matplotlib.animation import FuncAnimation, ArtistAnimation
 import torch
 import numpy as np
 
-def load_bouncing_ball(datafolder, dataname, eps=1e-6, static=False, singular=False):
+def load_bouncing_ball(datafolder, dataname, eps=1e-6, static=False, singular=False, binary=True):
     """[summary]
 
     Args:
@@ -18,7 +18,9 @@ def load_bouncing_ball(datafolder, dataname, eps=1e-6, static=False, singular=Fa
     """
     def load_images(path):
         npzfile = np.load(path)
-        pics = (npzfile['images'].astype(np.float32) > 0).astype('float32') + eps
+        pics = (npzfile['images'].astype(np.float32) > 0).astype('float32') if binary else\
+            npzfile['images'].astype(np.float32)
+        pics += eps
         if static:
             pics = np.repeat(pics[:,10,:,:][:,None,:,:], pics.shape[1], axis=1)
         if singular:

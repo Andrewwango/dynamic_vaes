@@ -57,11 +57,11 @@ class GrayScottVideoGenerator:
         return u,v
     
     def run(self, u, v, seq_len=500, save_freq=40):        
-        frames = np.zeros((seq_len, *(u.shape)), dtype=np.uint8)
+        frames = np.zeros((seq_len, *(u.shape)), dtype=np.float32)
         for i in range(save_freq*seq_len):
             u,v = self.step(u,v)
             if not i % save_freq:
-                frame = np.uint8(255*(v-v.min()) / (v.max()-v.min()))
+                frame = np.float32(1.0*(v-v.min()) / (v.max()-v.min()))
                 frames[int(i/save_freq)] = frame
                 
         return frames
@@ -70,7 +70,7 @@ class GrayScottVideoGenerator:
 class BatchGrayScottVideoGenerator():
 
     def run(self, res=60, n_samples=50, seq_len=200, format=None, fp=""):
-        images = np.empty((seq_len, n_samples, *res), dtype=np.float32) #float32 or uint8?
+        images = np.empty((seq_len, n_samples, *res), dtype=np.float32)
 
         for i in tqdm(range(n_samples)):
             g = GrayScottVideoGenerator(frame_size=res[0])
