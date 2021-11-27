@@ -89,20 +89,21 @@ def export_vid(model, dataloader, state_dict=None, epoch=0, j=0, both=True, ret=
     if ret: return x_hat
 
 
-def export_latent_space_vis(mu_smooth, a, titles=["z_0-1", "z_2-3", "a_0-1", "a_2-3"], j=0):
+def export_latent_space_vis(mu_smooth, a, titles=["z_0-1", "z_2-3", "a_0-1", "a_2-3"], j=0, name='results/z_circle.mp4'):
     #mu_smooth (seq_len, batch_size, z_dim), a (seq_len, batch_size, a_dim)
     xs = [mu_smooth[:, j, 0], mu_smooth[:, j, 2], a[:, j, 0], a[:, j, 2]]
     ys = [mu_smooth[:, j, 1], mu_smooth[:, j, 3], a[:, j, 1], a[:, j, 3]]
-    fig, axs = plt.subplots(nrows=1, ncols=4)#, figsize=(5, 3))
+    fig, axs = plt.subplots(nrows=1, ncols=len(titles))#, figsize=(5, 3))
 
     lines = []
-    for j in range(4):
+    for j in range(len(titles)):
         axs[j].set(xlim=(xs[j].min(), xs[j].max()), ylim=(ys[j].min(), ys[j].max()), title=titles[j])
         lines.append(axs[j].plot(xs[j][0], ys[j][0], color='k', lw=2)[0])
 
     def animate(i):
-        for j in range(4):
+        for j in range(len(titles)):
             lines[j].set_data(xs[j][:i], ys[j][:i])
 
     anim = FuncAnimation(fig, animate, interval=50, frames=mu_smooth.shape[0]-1)
-    anim.save('results/z_circle.mp4')
+    anim.save(name)
+    return anim

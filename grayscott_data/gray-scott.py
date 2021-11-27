@@ -69,8 +69,8 @@ class GrayScottVideoGenerator:
 
 class BatchGrayScottVideoGenerator():
 
-    def run(self, res=60, n_samples=50, seq_len=200, format=None, fp=""):
-        images = np.empty((seq_len, n_samples, *res), dtype=np.float32)
+    def run(self, res=(60,60), n_samples=50, seq_len=200, format=None, fp=""):
+        images = np.empty((seq_len, n_samples, res[0]+2, res[1]+2), dtype=np.float32)
 
         for i in tqdm(range(n_samples)):
             g = GrayScottVideoGenerator(frame_size=res[0])
@@ -79,7 +79,7 @@ class BatchGrayScottVideoGenerator():
             images[:, i, :, :] = frames #TODO: remove implicit conversion
         
             if format=='gif':
-                imageio.mimsave(f'grayscott_{i}.gif', frames, format='gif', fps=60)
+                imageio.mimsave(f'grayscott_data/grayscott_{i}.gif', frames, format='gif', fps=60)
         
         if format=='npz':
             np.savez(os.path.abspath(fp), images=images)
@@ -87,8 +87,8 @@ class BatchGrayScottVideoGenerator():
 if __name__ == "__main__":
     print("Generating training sequences")
     TrainGenerator = BatchGrayScottVideoGenerator()
-    TrainGenerator.run(res=60, iterations=10, seq_len=100, format='gif', fp="grayscott_data/grayscott")
+    TrainGenerator.run(res=(200,200), n_samples=2, seq_len=300, format='gif', fp="grayscott_data/grayscott")
 
     print("Generating test sequences")
     TestGenerator = BatchGrayScottVideoGenerator()
-    TestGenerator.run(res=60, iterations=0, seq_len=100, format='gif', fp="grayscott_data/grayscott_test")
+    TestGenerator.run(res=(60,60), n_samples=0, seq_len=300, format='gif', fp="grayscott_data/grayscott_test")

@@ -352,16 +352,17 @@ class KVAEModel(nn.Module):
     
         seq_len = x.shape[0]
         batch_size = x.shape[1]
-
+        print("1")
         # main part
         a, a_mean, a_logvar = self.encode(x)
+        print("2")
         batch_size = a.shape[1]
         u_0 = torch.zeros(1, batch_size, self.u_dim).to(self.device)
         u = torch.cat((u_0, a[:-1]), 0)
         a_gen, mu_smooth, Sigma_smooth, A_mix, B_mix, C_mix = self.kf_smoother(a, u, self.K, self.A, self.B, self.C, self.R, self.Q)
-
+        print("3")
         y = self.decode(a_gen)
-        
+        print("4")
         # output of NN:    (seq_len, batch_size, dim)
         # output of model: (batch_size, dim, seq_len) or (dim, seq_len)
         
